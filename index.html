@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Huokaing Thara AI Assistant</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        #chat-container { width: 400px; height: 500px; background: #1e293b; border-radius: 15px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #334155; }
+        #chat-window { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .message { padding: 10px 15px; border-radius: 10px; max-width: 80%; line-height: 1.4; }
+        .user-message { background: #3b82f6; align-self: flex-end; }
+        .bot-message { background: #334155; align-self: flex-start; border: 1px solid #475569; }
+        #input-area { padding: 15px; background: #0f172a; display: flex; gap: 10px; }
+        input { flex: 1; padding: 10px; border-radius: 5px; border: none; background: #1e293b; color: white; }
+        button { background: #3b82f6; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #2563eb; }
+    </style>
+</head>
+<body>
+
+<div id="chat-container">
+    <div id="chat-window">
+        <div class="message bot-message">សួស្តី! ខ្ញុំជាជំនួយការ AI របស់ Thara។ តើខ្ញុំអាចជួយអ្វីអ្នកបានខ្លះ?</div>
+    </div>
+    <div id="input-area">
+        <input type="text" id="user-input" placeholder="សួរមកកាន់ទីនេះ..." onkeypress="handleKey(event)">
+        <button onclick="sendMessage()">ផ្ញើ</button>
+    </div>
+</div>
+
+<script>
+    // ១. ប្តូរ URL នេះជាមួយ Forwarded Address ពី Ports Tab របស់អ្នក
+    const API_URL = "https://verbose-telegram-69pqv75vppwhrxqv-5000.app.github.dev/chat";
+
+    // មុខងារនិយាយជាសំឡេង
+    function speak(text) {
+        const synth = window.speechSynthesis;
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-US'; 
+        synth.speak(utterance);
+    }
+
+    async function sendMessage() {
+        const input = document.getElementById('user-input');
+        const chatWindow = document.getElementById('chat-window');
+        const message = input.value.trim();
+        
+        if (!message) return;
+
+        // បង្ហាញសាររបស់អ្នកប្រើ
+        appendMessage(message, 'user-message');
+        input.value = '';
+
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: message })
+            });
+
+            const data = await response.json();
+            
+            // បង្ហាញចម្លើយ AI
+            appendMessage(data.response, 'bot-message');
+            
+            // ឱ្យ AI និយាយចម្លើយនោះ
+            speak(data.response);
+
+        } catch (error) {
+            appendMessage("⚠️ កំហុស៖ មិនអាចភ្ជាប់ទៅ Server បានទេ។ សូមពិនិត្យ Port 5000។", 'bot-message');
+        }
+    }
+
+    function appendMessage(text, className) {
+        const chatWindow = document.getElementById('chat-window');
+        const div = document.createElement('div');
+        div.className = `message ${className}`;
+        div.innerText = text;
+        chatWindow.appendChild(div);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+
+    function handleKey(e) {
+        if (e.key === 'Enter') sendMessage();
+    }
+</script>
+
+</body>
+</html>
