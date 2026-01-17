@@ -150,5 +150,4 @@ function appendMsg(sender, text) {
 
 // 7. Event Listeners
 document.getElementById('sendBtn').onclick = handleSend;
-document.getElementById('userInput').onkeypress = (e) => { if (e.key === 'Enter') handleSend(); };
-ml>
+document.getElementById('userInput').onkeypress = (e) => { if (e.key === 'Enter') handleSend(); }
