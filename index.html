@@ -1,95 +1,58 @@
-<!DOCTYPE html>
-<html lang="km">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Singularity Assistant</title>
-    <style>
-        :root { --bg: #0f172a; --panel: #1e293b; --text: #f8fafc; --accent: #10b981; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; height: 100vh; }
-        header { background: var(--panel); padding: 15px; text-align: center; font-weight: bold; border-bottom: 2px solid var(--accent); }
-        #chat-window { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
-        .bubble { padding: 12px 18px; border-radius: 15px; max-width: 85%; word-wrap: break-word; line-height: 1.5; }
-        .user { background: #3b82f6; align-self: flex-end; border-bottom-right-radius: 2px; }
-        .bot { background: var(--panel); align-self: flex-start; border-bottom-left-radius: 2px; border-left: 4px solid var(--accent); }
-        .input-area { background: var(--panel); padding: 20px; display: flex; gap: 10px; }
-        input { flex: 1; padding: 12px; border-radius: 8px; border: none; background: var(--bg); color: white; outline: none; }
-        button { background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        button:hover { opacity: 0.9; }
-    </style>
-</head>
-<body>
-
-<header>SINGULARITY AI ASSISTANT (GEMINI 1.5)</header>
-
-<div id="chat-window">
-    <div class="bubble bot">សួស្តី! ខ្ញុំគឺជា AI ជំនួយការរបស់អ្នក។ តើអ្នកចង់ឱ្យខ្ញុំជួយអ្វីខ្លះថ្ងៃនេះ?</div>
-</div>
-
-<div class="input-area">
-    <input type="text" id="userInput" placeholder="សរសេរសាររបស់អ្នកនៅទីនេះ..." autocomplete="off">
-    <button id="sendBtn">បញ្ជូន</button>
+<div style="padding: 0 15%; margin-top: -10px;">
+    <label style="font-size: 0.8rem; color: var(--accent); cursor: pointer;">
+        <input type="checkbox" id="voiceToggle" checked> បើកសំឡេង AI (Offline TTS)
+    </label>
 </div>
 
 <script>
-    // ⚠️ WARNING: In a public GitHub repo, use a backend to hide this key!
-    const API_KEY = "AIzaSyDT1IYRoDMy9FTMO0yNZmnsVU8M0ArGz9Q"; 
-    const chatWindow = document.getElementById('chat-window');
-    const userInput = document.getElementById('userInput');
-    const sendBtn = document.getElementById('sendBtn');
+    // --- មុខងារសំឡេង Offline ---
+    function speak(text) {
+        const isVoiceOn = document.getElementById('voiceToggle').checked;
+        if (!isVoiceOn) return;
 
-    async function askGemini(prompt) {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+        // បង្កើត Object សំឡេង
+        const utterance = new SpeechSynthesisUtterance(text);
         
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }]
-            })
-        });
+        // កំណត់ភាសា (ខ្មែរ អាចប្រើ 'km-KH' បើម៉ាស៊ីនមាន ឬប្រើ 'en-US' ជាស្តង់ដារ)
+        // ចំណាំ៖ បើម៉ាស៊ីនព្រះអង្គមិនទាន់មានសំឡេងខ្មែរ វានឹងអានតាមបែបភាសាអង់គ្លេស
+        utterance.lang = 'km-KH'; 
+        utterance.rate = 1.0;  // ល្បឿននិយាយ
+        utterance.pitch = 1.0; // កម្រិតសំឡេង
 
-        const data = await response.json();
-        return data.candidates[0].content.parts[0].text;
+        window.speechSynthesis.speak(utterance);
     }
 
+    // --- កែសម្រួលមុខងារ handleSend បន្តិច ---
     async function handleSend() {
-        const text = userInput.value.trim();
+        const input = document.getElementById('userInput');
+        const text = input.value.trim();
         if (!text) return;
 
         appendMessage('user', text);
-        userInput.value = '';
-
-        // Show loading state
-        const loadingId = appendMessage('bot', "កំពុងគិត...");
+        input.value = '';
+        document.getElementById('status').style.display = 'block';
 
         try {
-            const reply = await askGemini(text);
-            updateMessage(loadingId, reply);
-        } catch (error) {
-            updateMessage(loadingId, "⚠️ កំហុស៖ មិនអាចទាក់ទង AI បានទេ។ សូមពិនិត្យ API Key របស់អ្នក។");
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: `អ្នកគឺជា AI ជំនួយការ។ \nUser: ${text}` }] }]
+                })
+            });
+
+            const data = await response.json();
+            const aiReply = data.candidates[0].content.parts[0].text;
+            
+            appendMessage('bot', aiReply);
+            
+            // បញ្ជាឱ្យ AI និយាយបន្ទាប់ពីសរសេររួច
+            speak(aiReply);
+
+        } catch (e) {
+            appendMessage('bot', "⚠️ កំហុស៖ មិនអាចទាក់ទង Google AI បានទេ។");
+        } finally {
+            document.getElementById('status').style.display = 'none';
         }
     }
-
-    function appendMessage(sender, text) {
-        const id = Date.now();
-        const div = document.createElement('div');
-        div.className = `bubble ${sender}`;
-        div.id = id;
-        div.innerText = text;
-        chatWindow.appendChild(div);
-        chatWindow.scrollTop = chatWindow.scrollHeight;
-        return id;
-    }
-
-    function updateMessage(id, newText) {
-        document.getElementById(id).innerText = newText;
-        chatWindow.scrollTop = chatWindow.scrollHeight;
-    }
-
-    sendBtn.addEventListener('click', handleSend);
-    userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSend(); });
 </script>
-
-</body>
-</html>
