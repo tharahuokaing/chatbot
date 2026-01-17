@@ -1,59 +1,95 @@
 <!DOCTYPE html>
-<html>
+<html lang="km">
 <head>
-  <title>Simple Chatbot</title>
-  <style>
-    body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto;}
-    #chatbox { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: auto; }
-    #userInput { width: 80%; padding: 10px; }
-    #sendBtn { padding: 10px;}
-    .user { color: blue; }
-    .bot { color: green; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Singularity Assistant</title>
+    <style>
+        :root { --bg: #0f172a; --panel: #1e293b; --text: #f8fafc; --accent: #10b981; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; height: 100vh; }
+        header { background: var(--panel); padding: 15px; text-align: center; font-weight: bold; border-bottom: 2px solid var(--accent); }
+        #chat-window { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .bubble { padding: 12px 18px; border-radius: 15px; max-width: 85%; word-wrap: break-word; line-height: 1.5; }
+        .user { background: #3b82f6; align-self: flex-end; border-bottom-right-radius: 2px; }
+        .bot { background: var(--panel); align-self: flex-start; border-bottom-left-radius: 2px; border-left: 4px solid var(--accent); }
+        .input-area { background: var(--panel); padding: 20px; display: flex; gap: 10px; }
+        input { flex: 1; padding: 12px; border-radius: 8px; border: none; background: var(--bg); color: white; outline: none; }
+        button { background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        button:hover { opacity: 0.9; }
+    </style>
 </head>
 <body>
-  <h1>Simple Chatbot</h1>
-  <div id="chatbox"></div>
-  <input id="userInput" type="text" placeholder="Say something..."/>
-  <button id="sendBtn">Send</button>
 
-  <script>
-    const chatbox = document.getElementById('chatbox');
+<header>SINGULARITY AI ASSISTANT (GEMINI 1.5)</header>
+
+<div id="chat-window">
+    <div class="bubble bot">សួស្តី! ខ្ញុំគឺជា AI ជំនួយការរបស់អ្នក។ តើអ្នកចង់ឱ្យខ្ញុំជួយអ្វីខ្លះថ្ងៃនេះ?</div>
+</div>
+
+<div class="input-area">
+    <input type="text" id="userInput" placeholder="សរសេរសាររបស់អ្នកនៅទីនេះ..." autocomplete="off">
+    <button id="sendBtn">បញ្ជូន</button>
+</div>
+
+<script>
+    // ⚠️ WARNING: In a public GitHub repo, use a backend to hide this key!
+    const API_KEY = "AIzaSyDT1IYRoDMy9FTMO0yNZmnsVU8M0ArGz9Q"; 
+    const chatWindow = document.getElementById('chat-window');
     const userInput = document.getElementById('userInput');
     const sendBtn = document.getElementById('sendBtn');
 
+    async function askGemini(prompt) {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }]
+            })
+        });
+
+        const data = await response.json();
+        return data.candidates[0].content.parts[0].text;
+    }
+
+    async function handleSend() {
+        const text = userInput.value.trim();
+        if (!text) return;
+
+        appendMessage('user', text);
+        userInput.value = '';
+
+        // Show loading state
+        const loadingId = appendMessage('bot', "កំពុងគិត...");
+
+        try {
+            const reply = await askGemini(text);
+            updateMessage(loadingId, reply);
+        } catch (error) {
+            updateMessage(loadingId, "⚠️ កំហុស៖ មិនអាចទាក់ទង AI បានទេ។ សូមពិនិត្យ API Key របស់អ្នក។");
+        }
+    }
+
     function appendMessage(sender, text) {
-      const msg = document.createElement('div');
-      msg.className = sender;
-      msg.textContent = sender.toUpperCase() + ': ' + text;
-      chatbox.appendChild(msg);
-      chatbox.scrollTop = chatbox.scrollHeight;
+        const id = Date.now();
+        const div = document.createElement('div');
+        div.className = `bubble ${sender}`;
+        div.id = id;
+        div.innerText = text;
+        chatWindow.appendChild(div);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+        return id;
     }
 
-    function botResponse(input) {
-      // Simple rules-based responses
-      input = input.toLowerCase();
-      if(input.includes('hi') || input.includes('hello')) {
-        return 'សួស្តី! ខ្ញុំជា​ជំនួយការ AI របស់ Thara។ តើអ្វីដែលខ្ញុំអាចជួយបាន?';
-      } else if(input.includes('time')) {
-        return 'Current time is: ' + new Date().toLocaleTimeString();
-      } else {
-        return 'សូមទោស, ខ្ញុំ​មិន​យល់​នោះ​ទេ។ សូម​សាក​ល្បង​ម្តង​ទៀត។';
-      }
+    function updateMessage(id, newText) {
+        document.getElementById(id).innerText = newText;
+        chatWindow.scrollTop = chatWindow.scrollHeight;
     }
 
-    sendBtn.onclick = () => {
-      const input = userInput.value.trim();
-      if(!input) return;
-      appendMessage('user', input);
-      const response = botResponse(input);
-      setTimeout(() => appendMessage('bot', response), 500);
-      userInput.value = '';
-    }
+    sendBtn.addEventListener('click', handleSend);
+    userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSend(); });
+</script>
 
-    userInput.addEventListener('keypress', (e) => {
-      if(e.key === 'Enter') sendBtn.click();
-    });
-  </script>
 </body>
 </html>
